@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EV Charging Dashboard</title>
+    <script>
+        function fetchData() {
+            fetch("http://127.0.0.1:5000/get-data")  // Fetch live sensor data
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("sensor1").innerText = "Sensor 1: " + data.distance1 + " cm";
+                document.getElementById("sensor2").innerText = "Sensor 2: " + data.distance2 + " cm";
+                document.getElementById("relay1-status").innerText = "Relay 1: " + data.relay1;
+                document.getElementById("relay2-status").innerText = "Relay 2: " + data.relay2;
+            });
+
+            fetchHistory();  // Fetch stored history
+        }
+
+        function fetchHistory() {
+            fetch("http://127.0.0.1:5000/get-history")  // Fetch history from database
+            .then(response => response.json())
+            .then(data => {
+                let historyTable = "<tr><th>ID</th><th>Sensor 1</th><th>Sensor 2</th><th>Relay 1</th><th>Relay 2</th><th>Time</th></tr>";
+                data.forEach(row => {
+                    historyTable += `<tr>
+                        <td>${row.id}</td>
+                        <td>${row.distance1} cm</td>
+                        <td>${row.distance2} cm</td>
+                        <td>${row.relay1 || 'OFF'}</td>
+                        <td>${row.relay2 || 'OFF'}</td>
+                        <td>${row.timestamp}</td>
+                    </tr>`;
+                });
+                document.getElementById("history-table").innerHTML = historyTable;
+            });
+        }
+
+        function controlRelay(relay, status) {
+            fetch("http://127.0.0.1:5000/control-relay", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ relay_id: relay, status: status })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                fetchData();  // Refresh after relay change
+            });
+        }
+
+        setInterval(fetchData, 2000);  // Update every 2 seconds
+    </script>
+</head>
+<body>
+    <h2>EV Charging Status</h2>
+    <p id="sensor1">Sensor 1: Loading...</p>
+    <p id="sensor2">Sensor 2: Loading...</p>
+    <p id="relay1-status">Relay 1: OFF</p>
+    <p id="relay2-status">Relay 2: OFF</p>
+
+    <h3>Control Relays</h3>
+    <button onclick="controlRelay('relay1', 'ON')">Turn Relay 1 ON</button>
+    <button onclick="controlRelay('relay1', 'OFF')">Turn Relay 1 OFF</button>
+    <br><br>
+    <button onclick="controlRelay('relay2', 'ON')">Turn Relay 2 ON</button>
+    <button onclick="controlRelay('relay2', 'OFF')">Turn Relay 2 OFF</button>
+
+    <h3>Sensor History</h3>
+    <table border="1" id="history-table">
+        <tr><th>ID</th><th>Sensor 1</th><th>Sensor 2</th><th>Relay 1</th><th>Relay 2</th><th>Time</th></tr>
+    </table>
+</body>
+</html>
